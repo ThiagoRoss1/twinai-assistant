@@ -2,7 +2,7 @@
     "functions": {
         "api/webhook.ts": {
             "includeFiles": "src/**",
-            "maxDuration": 60
+            "maxDuration": 300
         }
     },
     "routes": [

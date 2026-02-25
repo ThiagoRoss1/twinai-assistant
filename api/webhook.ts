@@ -15,6 +15,8 @@ type ReviewComment = {
     comment: string;
 };
 
+const PATRICK_GIF = "![PatrickLoading](https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExZmx6cmRiZ2Nyb203ampmOXJjYWo0ZnZvanRzZTd0MnUzNGt6cmlyZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Ij5kcfI6YwcPCN26U2/giphy.gif)";
+
 function getHeaderValue(value: string | string[] | undefined): string {
     if (Array.isArray(value)) {
         return value[0] || "";
@@ -38,7 +40,7 @@ async function getWebhookPayload(req: any): Promise<string> {
     if (Buffer.isBuffer(req.body)) {
         return req.body.toString("utf8");
     }
-
+    
     const chunks: Buffer[] = [];
     for await (const chunk of req) {
         chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
@@ -120,8 +122,6 @@ export async function handleWebhook(req: any, res: any) {
     const secret = process.env.WEBHOOK_SECRET || '';
     const signature = getHeaderValue(req.headers['x-hub-signature-256']);
     const payload = await getWebhookPayload(req);
-    
-    const PATRICK_GIF = "![PatrickLoading](https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExZmx6cmRiZ2Nyb203ampmOXJjYWo0ZnZvanRzZTd0MnUzNGt6cmlyZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Ij5kcfI6YwcPCN26U2/giphy.gif)";
 
     if (!secret) {
         return res.status(500).send('Webhook secret is not configured');
@@ -135,18 +135,35 @@ export async function handleWebhook(req: any, res: any) {
         return res.status(400).send('Missing payload');
     }
 
-    const isValid = await verify(secret, payload, signature);
+    let isValid = false;
+    try {
+        isValid = await verify(secret, payload, signature);
+    } catch (error) {
+        console.error('Webhook signature verification error:', error);
+        return res.status(401).send('Invalid signature payload');
+    }
 
     if (!isValid) {
         return res.status(401).send('Invalid signature');
     }
 
-    const body = typeof req.body === 'object' && req.body !== null ? req.body : JSON.parse(payload);
+    let body: any;
+    try {
+        body = typeof req.body === 'object' && req.body !== null ? req.body : JSON.parse(payload);
+    } catch (error) {
+        console.error('Error parsing webhook payload:', error);
+        return res.status(400).send('Invalid JSON payload');
+    }
+
     const { action, pull_request, installation } = body;
 
     if (action !== 'opened' && action !== 'synchronize') {
         res.status(200).send('Event ignored');
         return;
+    }
+
+    if (!installation || !installation.id) {
+        return res.status(400).send('Invalid payload: missing installation information.');
     }
 
     try {
