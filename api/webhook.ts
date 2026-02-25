@@ -1,7 +1,7 @@
 import { Octokit } from "@octokit/rest";
 import { createAppAuth } from "@octokit/auth-app";
 import { verify } from "@octokit/webhooks-methods";
-import { getAiReview } from "../core/engine.js";
+import { getAiReview } from "../src/core/engine.js";
 
 type ReviewComment = {
     file: string;
