@@ -1,0 +1,13 @@
+{
+    "functions": {
+        "api/webhook.ts": {
+            "includeFiles": "src/**"
+        }
+    },
+    "routes": [
+        {
+            "src": "/api/webhook",
+            "dest": "api/webhook.ts"
+        }
+    ]
+}

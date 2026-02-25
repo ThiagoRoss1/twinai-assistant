@@ -10,7 +10,7 @@ import fs from 'fs';
 import path from 'path';
 import { config } from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
-import { buildReviewPrompt, buildRefactorPrompt } from './utils/prompts.js';
+import { buildReviewPrompt, buildRefactorPrompt } from './core/prompts.js';
 import { execSync } from 'child_process'; // Kept as per original imports
 import { checkSyntax } from './utils/fileCommands.js';
 

@@ -1,3 +1,28 @@
+export function buildGithubPRReviewPrompt(language: string, code: string) {
+    return `
+        You are a senior software engineer reviewing a GitHub Pull Request diff.
+        Return your answer in ${language}.
+
+        IMPORTANT OUTPUT RULES:
+        1. Return ONLY a valid JSON array.
+        2. Do NOT include markdown, code fences, headings, or explanations.
+        3. Each item must strictly follow this schema:
+           {"file":"string","line":number,"comment":"string"}
+        4. Use the exact file path shown in the diff.
+        5. Use line numbers that exist in the changed file context.
+        6. If there are no relevant comments, return []
+
+        Focus on:
+        - Bugs and logic issues
+        - Security risks
+        - Performance concerns
+        - Readability and maintainability issues
+
+        Pull Request diff:
+        ${code}
+    `;
+}
+
 export function buildReviewPrompt(language: string, code: string) {
     return `
         You are a senior software engineer tasked with reviewing the following code for quality, readability, and potential issues. 

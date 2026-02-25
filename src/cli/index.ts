@@ -4,10 +4,9 @@ import fs from 'fs';
 import path from 'path';
 import { config } from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
-import { buildReviewPrompt, buildRefactorPrompt } from './utils/prompts.js';
-import { execSync } from 'child_process';
-import { checkSyntax } from './utils/fileCommands.js';
-import { error } from 'console';
+import { buildRefactorPrompt } from '../core/prompts.js';
+import { checkSyntax } from '../utils/fileCommands.js';
+import { getAiReview } from '../core/engine.js';
 
 config();
 
@@ -37,17 +36,10 @@ async function reviewCode(language: string, filePath: string) {
 
     console.log(`Reviewing code in: ${fullPath}`);
 
-    const prompt = buildReviewPrompt(language, code);
-
     try {
-
-    const response = await ai.models.generateContent({
-        model: 'gemini-flash-latest',
-        contents: prompt,
-    });
-
-    console.log(`Review for ${filePath}`);
-    console.log(response.text);
+        const response = await getAiReview(language, code, process.env.GEMINI_API_KEY);
+        console.log(`Review for ${filePath}`);
+        console.log(response);
     } catch (error) {
         console.error(`Error reviewing code: ${error}`);
     }
