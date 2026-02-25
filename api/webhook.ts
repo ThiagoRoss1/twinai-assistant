@@ -3,11 +3,59 @@ import { createAppAuth } from "@octokit/auth-app";
 import { verify } from "@octokit/webhooks-methods";
 import { getAiReview } from "../src/core/engine.js";
 
+export const config = {
+    api: {
+        bodyParser: false,
+    },
+};
+
 type ReviewComment = {
     file: string;
     line: number;
     comment: string;
 };
+
+function getHeaderValue(value: string | string[] | undefined): string {
+    if (Array.isArray(value)) {
+        return value[0] || "";
+    }
+    return value || "";
+}
+
+async function getWebhookPayload(req: any): Promise<string> {
+    if (typeof req.rawBody === "string") {
+        return req.rawBody;
+    }
+
+    if (Buffer.isBuffer(req.rawBody)) {
+        return req.rawBody.toString("utf8");
+    }
+
+    if (typeof req.body === "string") {
+        return req.body;
+    }
+
+    if (Buffer.isBuffer(req.body)) {
+        return req.body.toString("utf8");
+    }
+
+    const chunks: Buffer[] = [];
+    for await (const chunk of req) {
+        chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+    }
+    return Buffer.concat(chunks).toString("utf8");
+}
+
+function normalizeGithubPrivateKey(privateKey: string | undefined): string {
+    if (!privateKey) {
+        return "";
+    }
+
+    return privateKey
+        .replace(/^"|"$/g, "")
+        .replace(/\\n/g, "\n")
+        .trim();
+}
 
 function extractJsonArray(text: string): string {
     const withoutCodeFence = text
@@ -70,23 +118,31 @@ function parseReviewComments(review: string): ReviewComment[] {
 
 export async function handleWebhook(req: any, res: any) {
     const secret = process.env.WEBHOOK_SECRET || '';
-    const signature = req.headers['x-hub-signature-256'] as string;
+    const signature = getHeaderValue(req.headers['x-hub-signature-256']);
+    const payload = await getWebhookPayload(req);
     
     const PATRICK_GIF = "![PatrickLoading](https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExZmx6cmRiZ2Nyb203ampmOXJjYWo0ZnZvanRzZTd0MnUzNGt6cmlyZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Ij5kcfI6YwcPCN26U2/giphy.gif)";
 
-    if (!signature) {
-        res.status(400).send('Missing signature');
-        return;
+    if (!secret) {
+        return res.status(500).send('Webhook secret is not configured');
     }
 
-    const isValid = verify(secret, req.rawBody, signature);
+    if (!signature) {
+        return res.status(400).send('Missing signature');
+    }
+
+    if (!payload) {
+        return res.status(400).send('Missing payload');
+    }
+
+    const isValid = await verify(secret, payload, signature);
 
     if (!isValid) {
-        res.status(401).send('Invalid signature');
-        return;
+        return res.status(401).send('Invalid signature');
     }
-    
-    const { action, pull_request, installation } = req.body;
+
+    const body = typeof req.body === 'object' && req.body !== null ? req.body : JSON.parse(payload);
+    const { action, pull_request, installation } = body;
 
     if (action !== 'opened' && action !== 'synchronize') {
         res.status(200).send('Event ignored');
@@ -98,7 +154,7 @@ export async function handleWebhook(req: any, res: any) {
             authStrategy: createAppAuth,
             auth: {
                 appId: process.env.GITHUB_APP_ID,
-                privateKey: process.env.GITHUB_APP_PRIVATE_KEY,
+                privateKey: normalizeGithubPrivateKey(process.env.GITHUB_APP_PRIVATE_KEY),
                 installationId: installation.id,
             },
         });
