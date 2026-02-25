@@ -18,7 +18,7 @@ export function buildGithubPRReviewPrompt(language: string, code: string) {
         - Performance concerns
         - Readability and maintainability issues
 
-        Pull Request diff:
+        Pull Request diff :
         ${code}
     `;
 }
