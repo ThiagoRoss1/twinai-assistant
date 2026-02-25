@@ -11,14 +11,25 @@ export function buildGithubPRReviewPrompt(language: string, code: string) {
         4. Use the exact file path shown in the diff.
         5. Use line numbers that exist in the changed file context.
         6. If there are no relevant comments, return []
+        7. Return comments that are concise, actionable, and focused on the most important issues based on the diff.
+        8. Explain the issue clearly in the 'comment' field, being specific about the 'why' and the 'how', but keep it brief (1-4 sentences), and avoid vague feedback like "This could be improved" without specifics.
+        9. Always include a concise code suggestion or architectural solution or improvement within the same 'comment' string when an issue is identified.
+        10. Keep in mind the context of the change and the overall code quality, not just syntax errors.
+        11. Analyze the changes considering potential side effects on other parts of the system and suggest improvements that align with common software engineering patterns.
+        12. You should help the developer understand the root cause of the issue and how to fix it, not just point out that there is an issue. Your comments can be educational and guide the developer to learn and improve their coding skills.
 
         Focus on:
         - Bugs and logic issues
         - Security risks
-        - Performance concerns
-        - Readability and maintainability issues
+        - Performance concerns and resource leaks
+        - Readability, maintainability issues, and naming conventions
+        - Proper error handling and edge cases
+        - Adherence to modern software engineering best practices and design patterns
+        - Proper use of language features and libraries
+        - Test coverage and testability concerns
 
         Pull Request diff:
+        
         ${code}
     `;
 }
