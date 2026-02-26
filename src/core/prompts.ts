@@ -11,18 +11,14 @@ export function buildGithubPRReviewPrompt(language: string, code: string) {
                 "file": "string",
                 "line": number,
                 "severity": "🚨 Critical" | "⚠ High" | "⚠ Medium" | "⚠ Low",
-                "comment": {
-                    "issue": "string",
-                    "suggestion": "string",
-                    "rationale": "string",
-                }
+                "comment": "string"
             }
         4. Use the exact file path shown in the diff.
         5. Use only line numbers that are explicitly present in the provided diff hunks (lines starting with + or context lines). Do NOT target deleted lines (starting with -) or infer or guess line numbers that are not shown in the diff.
         6. Return only high-signal issues found: either (A) concrete risk issues (bugs, security, data loss, correctness, performance regressions) OR (B) maintainability/readability/design issues with clear practical impact (reliability, testability, long-term complexity, or performance). Prioritize findings by severity/impact in this order: Critical, High, Medium, Low.
         7. If there are no relevant comments, return [].
-        8. Inside the "comment" field, use Markdown to structure your feedback:
-            - Use **bold** for headers like **🔍 Issue**, **💡 Suggestion**, and **📝 Why**.
+        8. Inside the "comment" field, structure your feedback using the following format to ensure clarity and actionable advice:
+            - Using Markdown, you are REQUIRED to use headers: **bold** for headers like **🔍 Issue**, **💡 Suggestion**, and **📝 Why**.
             - Use short bullet points only when needed.
             - Use \`inline code\` for snippets or specific code references, ensure correct escaping (\\" and \\n). Do NOT use fenced code blocks inside "comment".
             - Ensure the string value within the "comment" field is correctly escaped (e.g., using \\" and \\n) so that the overall JSON array remains valid.
