@@ -11,21 +11,17 @@ export function buildGithubPRReviewPrompt(language: string, code: string) {
                 "file": "string",
                 "line": number,
                 "severity": "🚨 Critical" | "⚠ High" | "⚠ Medium" | "⚠ Low",
-                "comment": {
-                    "issue": "string",
-                    "suggestion": "string",
-                    "rationale": "string"
-                }
+                "comment": "string"
             }
         4. Use the exact file path shown in the diff.
         5. Use only line numbers that are explicitly present in the provided diff hunks (lines starting with + or context lines). Do NOT target deleted lines (starting with -) or infer or guess line numbers that are not shown in the diff.
         6. Return only high-signal issues found: either (A) concrete risk issues (bugs, security, data loss, correctness, performance regressions) OR (B) maintainability/readability/design issues with clear practical impact (reliability, testability, long-term complexity, or performance). Prioritize findings by severity/impact in this order: Critical, High, Medium, Low.
         7. If there are no relevant comments, return [].
-        8. Inside each string field of the "comment" object ("issue", "suggestion", "rationale"), you may use Markdown for clarity:
+        8. Inside the "comment" field, you MUST use Markdown to structure your feedback:
+            - Use **bold** for headers like **🔍 Issue**, **💡 Suggestion**, and **📝 Why**.
             - Use short bullet points only when needed.
-            - Use \`inline code\` for snippets or specific code references. Do NOT use fenced code blocks.
-            - Ensure each string value is correctly escaped (e.g., \\" and \\n) so that the overall JSON array remains valid.
-            - Do NOT add headers like **🔍 Issue** or **💡 Suggestion** inside the fields — the structure is already defined by the schema.
+            - Use \`inline code\` for snippets or specific code references, ensure correct escaping (\\" and \\n). Do NOT use fenced code blocks inside "comment".
+            - Ensure the string value within the "comment" field is correctly escaped (e.g., using \\" and \\n) so that the overall JSON array remains valid.
         9. Return comments that are concise, actionable, and focused on the most important issues based on the diff. Do not include praise-only or generic comments.
         10. Explain the issue clearly in the 'comment' field, being specific about the 'why' and the 'how', but keep it brief (1-4 short sentences), and avoid vague feedback like "This could be improved" without specifics.
         11. Always include a concise code suggestion or architectural solution or improvement within the same 'comment' string when an issue is identified.
