@@ -12,7 +12,12 @@ export const config = {
 type ReviewComment = {
     file: string;
     line: number;
-    comment: string;
+    severity: "🚨 Critical" | "⚠ High" | "⚠ Medium" | "⚠ Low";
+    comment: {
+        issue: string;
+        suggestion: string;
+        rationale: string;
+    };
 };
 
 const PATRICK_GIF = "![PatrickLoading](https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExZmx6cmRiZ2Nyb203ampmOXJjYWo0ZnZvanRzZTd0MnUzNGt6cmlyZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Ij5kcfI6YwcPCN26U2/giphy.gif)";
@@ -91,7 +96,7 @@ function parseReviewComments(review: string): ReviewComment[] {
 
             const candidate = item as Record<string, unknown>;
             const file = typeof candidate.file === "string" ? candidate.file.trim() : "";
-            const comment = typeof candidate.comment === "string" ? candidate.comment.trim() : "";
+            const severity = typeof candidate.severity === "string" ? candidate.severity.trim() : "⚠ Low";
             const rawLine = candidate.line;
             const line =
                 typeof rawLine === "number"
@@ -100,7 +105,21 @@ function parseReviewComments(review: string): ReviewComment[] {
                     ? Number(rawLine)
                     : NaN;
 
-            if (!file || !comment || !Number.isFinite(line)) {
+            const rawComment = candidate.comment;
+            
+            if (
+                !rawComment ||
+                typeof rawComment !== "object" ||
+                typeof (rawComment as Record<string, unknown>).issue !== "string" ||
+                typeof (rawComment as Record<string, unknown>).suggestion !== "string" ||
+                typeof (rawComment as Record<string, unknown>).rationale !== "string"
+            ) {
+                return null;
+            }
+
+            const comment = rawComment as { issue: string; suggestion: string; rationale: string };
+
+            if (!file || !Number.isFinite(line)) {
                 return null;
             }
 
@@ -112,7 +131,12 @@ function parseReviewComments(review: string): ReviewComment[] {
             return {
                 file,
                 line: safeLine,
-                comment,
+                severity: severity as ReviewComment["severity"],
+                comment: {
+                    issue: comment.issue.trim(),
+                    suggestion: comment.suggestion.trim(),
+                    rationale: comment.rationale.trim(),
+                },
             };
         })
         .filter((item): item is ReviewComment => item !== null);
@@ -202,10 +226,10 @@ export async function handleWebhook(req: any, res: any) {
             pull_number: pull_request.number,
             event: 'COMMENT',
             body: "TwinAI Code Review!",
-            comments: reviewsArray.map((comment: any) => ({
-                path: comment.file,
-                line: comment.line,
-                body: comment.comment,
+            comments: reviewsArray.map((item: ReviewComment) => ({
+                path: item.file,
+                line: item.line,
+                body: `${item.severity}\n\n**🔍 Issue**\n${item.comment.issue}\n\n**💡 Suggestion**\n${item.comment.suggestion}\n\n**📝 Why**\n${item.comment.rationale}`,
             })),
         });
     } catch (error) {
