@@ -15,6 +15,36 @@ type ReviewComment = {
     comment: string;
 };
 
+interface WebhookIncomingRequest extends AsyncIterable<Buffer | string> {
+    rawBody?: string | Buffer;
+    body?: string | Buffer | Record<string, unknown> | null;
+    headers: Record<string, string | string[] | undefined>;
+    method?: string;
+}
+
+interface WebhookResponse {
+    status(code: number): WebhookResponse;
+    send(body: string): void;
+}
+
+type GitHubWebhookBody = {
+    action: string;
+    pull_request: {
+        number: number;
+        base: {
+            repo: {
+                name: string;
+                owner: {
+                    login: string;
+                };
+            };
+        };
+    };
+    installation?: {
+        id: number;
+    };
+};
+
 const PATRICK_GIF = "![PatrickLoading](https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExZmx6cmRiZ2Nyb203ampmOXJjYWo0ZnZvanRzZTd0MnUzNGt6cmlyZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Ij5kcfI6YwcPCN26U2/giphy.gif)";
 
 function getHeaderValue(value: string | string[] | undefined): string {
@@ -24,7 +54,7 @@ function getHeaderValue(value: string | string[] | undefined): string {
     return value || "";
 }
 
-async function getWebhookPayload(req: any): Promise<string> {
+async function getWebhookPayload(req: WebhookIncomingRequest): Promise<string> {
     if (typeof req.rawBody === "string") {
         return req.rawBody;
     }
@@ -118,7 +148,7 @@ function parseReviewComments(review: string): ReviewComment[] {
         .filter((item): item is ReviewComment => item !== null);
 }
 
-export async function handleWebhook(req: any, res: any) {
+export async function handleWebhook(req: WebhookIncomingRequest, res: WebhookResponse) {
     const secret = process.env.WEBHOOK_SECRET || '';
     const signature = getHeaderValue(req.headers['x-hub-signature-256']);
     const payload = await getWebhookPayload(req);
@@ -147,9 +177,9 @@ export async function handleWebhook(req: any, res: any) {
         return res.status(401).send('Invalid signature');
     }
 
-    let body: any;
+    let body: GitHubWebhookBody;
     try {
-        body = typeof req.body === 'object' && req.body !== null ? req.body : JSON.parse(payload);
+        body = typeof req.body === 'object' && req.body !== null ? req.body as GitHubWebhookBody : JSON.parse(payload) as GitHubWebhookBody;
     } catch (error) {
         console.error('Error parsing webhook payload:', error);
         return res.status(400).send('Invalid JSON payload');
@@ -195,14 +225,16 @@ export async function handleWebhook(req: any, res: any) {
         const review = await getAiReview('english', diffText, process.env.GEMINI_API_KEY, true);
         const reviewsArray = parseReviewComments(review);
 
+        const bodyText = reviewsArray.length > 0 ? "TwinAI Code Review!" : "TwinAI did not find any issues in this Pull Request!";
+
         await octokit.rest.pulls.createReview({
             owner: pull_request.base.repo.owner.login,
             
             repo: pull_request.base.repo.name,
             pull_number: pull_request.number,
             event: 'COMMENT',
-            body: "TwinAI Code Review!",
-            comments: reviewsArray.map((comment: any) => ({
+            body: bodyText,
+            comments: reviewsArray.map((comment: ReviewComment) => ({
                 path: comment.file,
                 line: comment.line,
                 body: comment.comment,
@@ -231,7 +263,7 @@ export async function handleWebhook(req: any, res: any) {
     }
 }
 
-export default async function webhook(req: any, res: any) {
+export default async function webhook(req: WebhookIncomingRequest, res: WebhookResponse) {
     if (req.method !== 'POST') {
         return res.status(405).send('Method Not Allowed');
     }
